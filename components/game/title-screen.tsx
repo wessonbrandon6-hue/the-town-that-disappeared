@@ -41,7 +41,7 @@ export function TitleScreen({ onStart }: TitleScreenProps) {
         </button>
 
         <ul className="rise mt-6 grid gap-3 text-left font-mono text-xs leading-relaxed text-muted-foreground sm:grid-cols-3 [animation-delay:1100ms]">
-          <li className="border-l border-border pl-3">Every search burns oil. When the flame dies, so do you.</li>
+          <li className="border-l border-border pl-3">The flame burns down in real time. When it goes out, relight it with a lighter, match, or torch — fast.</li>
           <li className="border-l border-border pl-3">Gather clues in your journal. Some doors need keys.</li>
           <li className="border-l border-border pl-3">Climb the belfry and speak the truth to the Quiet.</li>
         </ul>

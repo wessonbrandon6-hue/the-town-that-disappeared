@@ -13,12 +13,13 @@ interface LocationViewProps {
   searched: string[]
   items: ItemId[]
   oil: number
+  lit: boolean
   discovery: Discovery | null
   onSearch: (spotId: string) => void
   onClimb: () => void
 }
 
-export function LocationView({ location, searched, items, oil, discovery, onSearch, onClimb }: LocationViewProps) {
+export function LocationView({ location, searched, items, oil, lit, discovery, onSearch, onClimb }: LocationViewProps) {
   const isChapel = location.id === "chapel"
   const hasBelfryKey = items.includes("belfryKey")
 
@@ -36,7 +37,12 @@ export function LocationView({ location, searched, items, oil, discovery, onSear
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
         <header className="absolute inset-x-0 bottom-0 p-5 md:p-8">
-          <p className="font-mono text-xs uppercase tracking-[0.35em] text-accent">{location.subtitle}</p>
+          <p className="font-mono text-xs uppercase tracking-[0.35em] text-accent">
+            {location.subtitle}
+            {location.drain && location.drain > 1 && (
+              <span className="ml-3 text-destructive">{`· Flame burns ${location.drain}x faster`}</span>
+            )}
+          </p>
           <h1 className="mt-1 text-balance font-serif text-4xl leading-none text-foreground md:text-6xl">
             {location.name}
           </h1>
@@ -70,7 +76,7 @@ export function LocationView({ location, searched, items, oil, discovery, onSear
                 <li key={spot.id}>
                   <button
                     type="button"
-                    disabled={done || oil <= 0}
+                    disabled={done || oil <= 0 || !lit}
                     onClick={() => onSearch(spot.id)}
                     className={cn(
                       "flex h-full w-full items-start gap-3 border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -108,7 +114,7 @@ export function LocationView({ location, searched, items, oil, discovery, onSear
             </p>
             <button
               type="button"
-              disabled={!hasBelfryKey}
+              disabled={!hasBelfryKey || !lit}
               onClick={onClimb}
               className="inline-flex shrink-0 items-center gap-2 border border-accent px-5 py-3 font-mono text-xs uppercase tracking-[0.25em] text-accent transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-accent"
             >

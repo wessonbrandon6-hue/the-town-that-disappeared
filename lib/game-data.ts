@@ -1,4 +1,7 @@
-export type LocationId = "square" | "store" | "school" | "sheriff" | "manor" | "chapel"
+export type LocationId = "square" | "store" | "school" | "sheriff" | "manor" | "mine" | "cemetery" | "chapel"
+
+export type SupplyId = "fluid" | "matches" | "torches"
+export type Supplies = Record<SupplyId, number>
 
 export type ClueId =
   | "vigil"
@@ -12,6 +15,8 @@ export type ClueId =
   | "returned"
   | "ritual"
   | "register"
+  | "tag"
+  | "grave"
 
 export type ItemId = "houseKey" | "belfryKey" | "register"
 
@@ -28,6 +33,8 @@ export interface Spot {
   clue?: ClueId
   item?: ItemId
   oilChange?: number
+  flameChange?: number
+  supplies?: Partial<Supplies>
 }
 
 export interface Location {
@@ -38,11 +45,32 @@ export interface Location {
   description: string
   requires?: ItemId
   lockedText?: string
+  /** Multiplier on how fast the flame burns down here. */
+  drain?: number
+  /** Chance (0-1) that a cold draft hits the flame when you arrive. */
+  draftChance?: number
   spots: Spot[]
 }
 
-export const STARTING_OIL = 12
+export const STARTING_OIL = 14
 export const SEARCH_COST = 1
+
+export const FLAME_MAX = 100
+export const FLAME_DRAIN_PER_SECOND = 1.25
+export const LOW_FLAME = 30
+export const DRAFT_DAMAGE = 25
+export const DREAD_MAX = 20
+export const LIGHTER_SUCCESS = 0.6
+export const MATCH_FLAME = 70
+export const TORCH_SECONDS = 45
+
+export const STARTING_SUPPLIES: Supplies = { fluid: 3, matches: 1, torches: 0 }
+
+export const SUPPLY_LABELS: Record<SupplyId, { one: string; many: string }> = {
+  fluid: { one: "lighter strike", many: "lighter strikes" },
+  matches: { one: "match", many: "matches" },
+  torches: { one: "torch", many: "torches" },
+}
 
 export const ITEMS: Record<ItemId, { name: string; text: string }> = {
   houseKey: {
@@ -115,6 +143,16 @@ export const CLUES: Record<ClueId, Clue> = {
     title: "The way back",
     text: "Penciled inside the register's cover: \"If the names are spoken aloud at 3:33, the Quiet must give them back.\"",
   },
+  tag: {
+    id: "tag",
+    title: "Lamp tag #12",
+    text: "Every miner hangs a brass tag when he goes down and takes it back when he comes up. Tag #12 — T. WHITLOCK — was never collected.",
+  },
+  grave: {
+    id: "grave",
+    title: "Dug from below",
+    text: "Thomas Whitlock's grave is open. The dirt is thrown outward. Whatever came home didn't climb out of the mine — it climbed out of here, wearing his face.",
+  },
 }
 
 export const LOCATIONS: Location[] = [
@@ -169,7 +207,8 @@ export const LOCATIONS: Location[] = [
       {
         id: "backroom",
         label: "Open the back room",
-        text: "Footprints in the flour dust lead in. None lead out. You close the door gently, as if something might be sleeping.",
+        text: "Footprints in the flour dust lead in. None lead out. On a crate by the door: a box of kitchen matches. You pocket them and close the door gently, as if something might be sleeping.",
+        supplies: { matches: 4 },
       },
     ],
   },
@@ -196,7 +235,8 @@ export const LOCATIONS: Location[] = [
       {
         id: "desk",
         label: "Open the teacher's desk",
-        text: "Graded papers, all marked with an A. The children's names on them have faded to nothing.",
+        text: "Graded papers, all marked with an A. The children's names on them have faded to nothing. Under them, a can of lighter fluid confiscated from some boy's pocket.",
+        supplies: { fluid: 2 },
       },
     ],
   },
@@ -223,8 +263,9 @@ export const LOCATIONS: Location[] = [
       {
         id: "keys",
         label: "Search the key cabinet",
-        text: "Every hook is empty but one. The key hangs alone, as if waiting for you specifically.",
+        text: "Every hook is empty but one. The key hangs alone, as if waiting for you specifically. A road flare is strapped inside the cabinet door.",
         item: "belfryKey",
+        supplies: { torches: 1 },
       },
     ],
   },
@@ -235,6 +276,7 @@ export const LOCATIONS: Location[] = [
     image: "/images/manor.png",
     requires: "houseKey",
     lockedText: "The Whitlock front door is locked. The brass plate is engraved with a single letter: W.",
+    draftChance: 0.5,
     description:
       "The house is warm. That's the first wrong thing. A fire has burned down to embers in the study grate, and somewhere upstairs a floorboard settles under a weight you can't see.",
     spots: [
@@ -253,8 +295,67 @@ export const LOCATIONS: Location[] = [
       {
         id: "mirror",
         label: "Look into the mirror",
-        text: "Your reflection blinks a moment after you do. Then it smiles. You stumble back and your lantern gutters.",
-        oilChange: -2,
+        text: "Your reflection blinks a moment after you do. Then it smiles, leans close to the glass, and blows. Your lantern goes out.",
+        flameChange: -FLAME_MAX,
+      },
+    ],
+  },
+  {
+    id: "mine",
+    name: "Ashby Mine",
+    subtitle: "Twelve went down",
+    image: "/images/mine.png",
+    drain: 2,
+    draftChance: 0.6,
+    description:
+      "The air coming out of the shaft is colder than the night. It pulls at your flame like breath. Your lantern burns twice as fast down here — the dark in the mine is hungry, and it is not used to sharing.",
+    spots: [
+      {
+        id: "tagboard",
+        label: "Read the lamp-check board",
+        text: "Rows of brass tags, one per miner. Eleven hooks are empty — those men came up, or their bodies did. One tag still hangs.",
+        clue: "tag",
+      },
+      {
+        id: "rack",
+        label: "Take from the torch rack",
+        text: "Two pitch torches, wrapped in tar-soaked rags. They'll burn long and bright.",
+        supplies: { torches: 2 },
+      },
+      {
+        id: "shaft",
+        label: "Call down the shaft",
+        text: "Your voice goes down. A moment later it comes back up — in a young man's voice. \"Dad?\" A gust roars out of the dark.",
+        flameChange: -45,
+      },
+    ],
+  },
+  {
+    id: "cemetery",
+    name: "Marrow Cemetery",
+    subtitle: "Where the names are kept",
+    image: "/images/cemetery.png",
+    draftChance: 0.35,
+    description:
+      "The headstones lean together like people whispering. The newest ones belong to the miners — eleven stones in a neat row, and a twelfth that has been opened.",
+    spots: [
+      {
+        id: "grave",
+        label: "Look into the open grave",
+        text: "The coffin lid is split from the inside. Claw marks. A miner's helmet lies in the mud at the bottom, its lamp still faintly warm.",
+        clue: "grave",
+      },
+      {
+        id: "shed",
+        label: "Search the caretaker's shed",
+        text: "Shovels, a ledger of burials, and a tin of lighter fluid on the windowsill. Someone here did not like the dark either.",
+        supplies: { fluid: 3 },
+      },
+      {
+        id: "offerings",
+        label: "Sift through the offerings",
+        text: "Flowers, rosaries, a child's tin soldier — and a small bottle of lamp oil left for the dead to see by. You borrow it.",
+        oilChange: 4,
       },
     ],
   },
@@ -282,7 +383,8 @@ export const LOCATIONS: Location[] = [
       {
         id: "pews",
         label: "Search the pews",
-        text: "In a breast pocket: a church bulletin. The hymn numbers are all 333. Someone has written \"forgive me\" in the margin.",
+        text: "In a breast pocket: a church bulletin and a book of matches. The hymn numbers are all 333. Someone has written \"forgive me\" in the margin.",
+        supplies: { matches: 2 },
       },
     ],
   },
@@ -332,6 +434,17 @@ export const QUESTIONS: Question[] = [
     answer: "son",
   },
   {
+    id: "returned",
+    prompt: "What truly came home to Whitlock House?",
+    options: [
+      { id: "alive", text: "Thomas, alive — he survived the collapse" },
+      { id: "survivor", text: "Another miner, pretending to be Thomas" },
+      { id: "quiet", text: "The Quiet, wearing Thomas's face" },
+      { id: "nothing", text: "Nothing — the Mayor imagined it" },
+    ],
+    answer: "quiet",
+  },
+  {
     id: "how",
     prompt: "How is the bargain broken?",
     options: [
@@ -379,7 +492,7 @@ export const ENDINGS: Record<EndingId, { title: string; kicker: string; text: st
     kicker: "The lantern fails",
     title: "The Dark Keeps What It Takes",
     text: [
-      "The flame shrinks to a bead, then to nothing.",
+      "The flame shrinks to a bead, then to nothing — and this time, it does not come back.",
       "In the black, the fog presses close and you hear them at last — two hundred and twelve voices, whispering your name so they won't forget it.",
       "By morning, there is one more coat on the chapel pews.",
     ],
@@ -395,4 +508,15 @@ export const WHISPERS = [
   "...we're still here...",
   "...ring it and we're gone forever...",
   "...the Quiet is listening...",
+  "...let it go out... it's warmer in the dark...",
+  "...Thomas never came up...",
+]
+
+export const DARK_WHISPERS = [
+  "...there you are...",
+  "...don't light it... stay...",
+  "...he's right behind you...",
+  "...we can see you now...",
+  "...your name... give us your name...",
+  "...closer...",
 ]
