@@ -1,7 +1,5 @@
-"use client"
-
-import Component from "../game"
+import { TownGame } from "@/components/game/town-game"
 
 export default function Page() {
-  return <Component />
+  return <TownGame />
 }

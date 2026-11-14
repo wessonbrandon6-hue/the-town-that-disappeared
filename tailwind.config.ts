@@ -64,6 +64,10 @@ const config: Config = {
           ring: 'hsl(var(--sidebar-ring))',
         },
       },
+      fontFamily: {
+        serif: ['var(--font-fell)', 'Georgia', 'serif'],
+        mono: ['var(--font-geist-mono)', 'ui-monospace', 'monospace'],
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
